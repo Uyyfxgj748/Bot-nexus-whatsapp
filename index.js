@@ -1,6 +1,7 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const readline = require('readline');
+const { manejarMensaje } = require('./src/handler');
 
 function preguntarNumero() {
     return new Promise((resolve) => {
@@ -26,7 +27,6 @@ async function iniciarBot() {
     if (!sock.authState.creds.registered) {
         const numero = await preguntarNumero();
         const numeroFormateado = numero.replace(/[^0-9]/g, '');
-
         const codigo = await sock.requestPairingCode(numeroFormateado);
         console.log(`\n✅ Tu código de emparejamiento es: ${codigo}`);
         console.log('👉 Abre WhatsApp > Dispositivos vinculados > Vincular con número de teléfono');
@@ -37,7 +37,7 @@ async function iniciarBot() {
 
     sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
         if (connection === 'open') {
-            console.log('✅ Bot conectado y listo!');
+            console.log('✅ ¡Bot conectado y listo! Escribe !menu en WhatsApp para ver los comandos.');
         } else if (connection === 'close') {
             const codigo = lastDisconnect?.error?.output?.statusCode;
             const reconectar = codigo !== DisconnectReason.loggedOut;
@@ -52,28 +52,8 @@ async function iniciarBot() {
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
-
         for (const msg of messages) {
-            if (!msg.message || msg.key.fromMe) continue;
-
-            const texto = (
-                msg.message.conversation ||
-                msg.message.extendedTextMessage?.text ||
-                ''
-            ).toLowerCase().trim();
-
-            const jid = msg.key.remoteJid;
-
-            if (texto === '!hola') {
-                await sock.sendMessage(jid, { text: '¡Hola! Soy un bot de WhatsApp. ¿En qué puedo ayudarte?' });
-            } else if (texto === '!ayuda') {
-                await sock.sendMessage(jid, {
-                    text: '📋 *Comandos disponibles:*\n!hola - Saludo\n!ayuda - Ver comandos\n!hora - Ver la hora actual'
-                });
-            } else if (texto === '!hora') {
-                const ahora = new Date().toLocaleString('es-ES', { timeZone: 'America/Mexico_City' });
-                await sock.sendMessage(jid, { text: `🕐 La hora actual es: ${ahora}` });
-            }
+            await manejarMensaje(sock, msg);
         }
     });
 }

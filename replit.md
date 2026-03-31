@@ -1,33 +1,66 @@
-# Bot de WhatsApp
+# Nekos Bot - WhatsApp
 
-Bot de WhatsApp construido con Node.js y la librería `whatsapp-web.js`.
+Bot de WhatsApp completo con múltiples funciones, construido con Node.js y Baileys.
 
-## Cómo usar
+## Cómo iniciar
 
-1. Ejecuta el proyecto (workflow: "Start application")
-2. Escanea el código QR que aparece en la consola con tu WhatsApp
-   - Abre WhatsApp en tu teléfono
-   - Ve a Configuración > Dispositivos vinculados > Vincular un dispositivo
-   - Escanea el código QR
-3. Una vez conectado, el bot responderá mensajes
+1. Ejecuta el proyecto
+2. Si no hay sesión guardada, ingresa tu número con código de país (ej: 521234567890)
+3. Ingresa el código en WhatsApp > Dispositivos vinculados > Vincular con número de teléfono
+4. Escribe `!menu` en WhatsApp para ver todos los comandos
 
 ## Comandos disponibles
 
-- `!hola` - El bot responde con un saludo
-- `!ayuda` - Muestra la lista de comandos
-- `!hora` - Muestra la hora actual
+### Descargas
+- `!yt <link>` — Descargar video de YouTube (máx 5 min)
+- `!tiktok <link>` — Descargar video de TikTok sin marca de agua
+- `!img <link>` — Descargar imagen desde URL
+- `!sticker` — Convertir imagen/video a sticker (responde a un mensaje)
+
+### Economía
+- `!perfil` — Ver tu perfil (monedas, nivel, inventario)
+- `!saldo` — Ver cuántas monedas tienes
+- `!diario` — Recoger monedas diarias (recarga cada 24h)
+- `!transferir @user cantidad` — Enviar monedas a otro usuario
+- `!tienda` — Ver artículos disponibles
+- `!comprar <id>` — Comprar un artículo de la tienda
+- `!inventario` — Ver tus artículos
+
+### Interacciones
+- `!abrazar @user` — Abrazar a alguien
+- `!besar @user` — Besar a alguien
+- `!golpear @user` — Golpear a alguien
+- `!acariciar @user` — Acariciar a alguien
+- `!bailar @user` — Bailar con alguien
+
+### +18
+- `!neko` — Imagen neko +18
+- `!waifu` — Imagen waifu +18
+- `!hentai` — Imagen hentai
 
 ## Estructura del proyecto
 
-- `index.js` - Archivo principal del bot
-- `package.json` - Dependencias del proyecto
+```
+index.js          — Punto de entrada del bot
+src/
+  handler.js      — Enrutador de comandos
+  menu.js         — Comando de menú
+  economy.js      — Sistema de economía
+  interactions.js — Interacciones SFW y NSFW
+  sticker.js      — Conversión de stickers
+  downloads.js    — Descarga de videos/imágenes
+  database.js     — Base de datos JSON
+data/
+  users.json      — Datos de usuarios (generado automáticamente)
+  tienda.json     — Artículos de la tienda
+auth_info/        — Sesión de WhatsApp (generado automáticamente)
+```
 
-## Dependencias
+## Dependencias principales
 
-- `whatsapp-web.js` - Librería para conectar con WhatsApp
-- `qrcode-terminal` - Para mostrar el QR en la consola
-
-## Notas
-
-- La sesión se guarda automáticamente en `.wwebjs_auth/` por lo que no necesitas escanear el QR cada vez
-- El bot usa Chromium del sistema para funcionar
+- `@whiskeysockets/baileys` — Conexión con WhatsApp
+- `sharp` — Procesamiento de imágenes para stickers
+- `fluent-ffmpeg` — Conversión de videos a stickers
+- `ytdl-core` — Descarga de YouTube
+- `axios` — Peticiones HTTP
+- `fs-extra` — Manejo de archivos
