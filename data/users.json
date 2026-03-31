@@ -5,6 +5,14 @@
     "ultimoDiario": null,
     "inventario": [],
     "nivel": 1,
-    "experiencia": 0
+    "experiencia": 10,
+    "banco": 0,
+    "ultimoTrabajo": null,
+    "mensajes": 2,
+    "pareja": null,
+    "cumpleanos": null,
+    "genero": null,
+    "descripcion": null,
+    "advertencias": 0
   }
 }
