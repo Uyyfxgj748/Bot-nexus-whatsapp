@@ -83,50 +83,40 @@ async function cmdYoutubeAudio(sock, jid, args) {
     }
 }
 
-async function cobaltDescargar(url) {
-    const res = await axios.post('https://api.cobalt.tools/api/json',
-        { url, vCodec: 'h264', vQuality: '720', filenamePattern: 'basic', isNoTTWatermark: true },
-        { ...axiosOpts, headers: { ...axiosOpts.headers, 'Accept': 'application/json', 'Content-Type': 'application/json' }, timeout: 20000 }
-    );
-    if (res.data?.status === 'stream' || res.data?.status === 'redirect' || res.data?.status === 'tunnel') {
-        return res.data.url;
-    }
-    if (res.data?.status === 'picker' && res.data?.picker?.[0]?.url) {
-        return res.data.picker[0].url;
-    }
-    throw new Error('cobalt no retornó URL');
-}
-
 async function tiktokDescargar(url) {
-    const apis = [
-        async () => {
-            const videoUrl = await cobaltDescargar(url);
-            return { videoUrl, titulo: 'TikTok' };
-        },
-        async () => {
-            const params = new URLSearchParams({ url, hd: '0' });
-            const res = await axios.post('https://www.tikwm.com/api/', params.toString(), {
-                ...axiosOpts,
-                headers: { ...axiosOpts.headers, 'Content-Type': 'application/x-www-form-urlencoded' },
-                timeout: 15000
-            });
-            if (res.data?.code === 0 && res.data?.data?.play) {
-                return { videoUrl: res.data.data.play, titulo: res.data.data.title || 'TikTok' };
-            }
-            throw new Error('tikwm falló');
-        },
-        async () => {
-            const res = await axios.get(`https://api.tiklydown.eu.org/api/download/v2?url=${encodeURIComponent(url)}`, axiosOpts);
-            if (res.data?.video?.noWatermark) {
-                return { videoUrl: res.data.video.noWatermark, titulo: res.data.title || 'TikTok' };
-            }
-            throw new Error('tiklydown falló');
+    const errores = [];
+    const headers = { ...axiosOpts.headers, 'Content-Type': 'application/x-www-form-urlencoded' };
+
+    // API 1: tikwm.com (probada y funciona)
+    try {
+        const params = new URLSearchParams({ url, hd: '0' });
+        const res = await axios.post('https://www.tikwm.com/api/', params.toString(), { headers, timeout: 20000 });
+        if (res.data?.code === 0 && res.data?.data?.play) {
+            return { videoUrl: res.data.data.play, titulo: res.data.data.title || 'TikTok' };
         }
-    ];
-    for (const api of apis) {
-        try { return await api(); } catch {}
-    }
-    throw new Error('No se pudo obtener el video de TikTok con ninguna API.');
+        errores.push('tikwm: respuesta inesperada');
+    } catch (e) { errores.push(`tikwm: ${e.message}`); }
+
+    // API 2: tiklydown v2
+    try {
+        const res = await axios.get(`https://api.tiklydown.eu.org/api/download/v2?url=${encodeURIComponent(url)}`, { ...axiosOpts, timeout: 15000 });
+        if (res.data?.video?.noWatermark) {
+            return { videoUrl: res.data.video.noWatermark, titulo: res.data.title || 'TikTok' };
+        }
+        errores.push('tiklydown: respuesta inesperada');
+    } catch (e) { errores.push(`tiklydown: ${e.message}`); }
+
+    // API 3: tiklydown v1
+    try {
+        const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(url)}`, { ...axiosOpts, timeout: 15000 });
+        if (res.data?.video?.noWatermark) {
+            return { videoUrl: res.data.video.noWatermark, titulo: res.data.title || 'TikTok' };
+        }
+        errores.push('tiklydown v1: respuesta inesperada');
+    } catch (e) { errores.push(`tiklydown v1: ${e.message}`); }
+
+    console.error('TikTok falló todas las APIs:', errores.join(' | '));
+    throw new Error('No se pudo descargar el video. Asegúrate de que el link sea público y válido.');
 }
 
 async function cmdTiktok(sock, jid, args) {
@@ -147,28 +137,25 @@ async function cmdTiktok(sock, jid, args) {
 
 async function twitterDescargar(url) {
     const tweetId = url.match(/status\/(\d+)/)?.[1];
-    if (!tweetId) throw new Error('URL inválida');
-    const apis = [
-        async () => {
-            return await cobaltDescargar(url);
-        },
-        async () => {
-            const res = await axios.get(`https://api.vxtwitter.com/Twitter/status/${tweetId}`, axiosOpts);
-            const media = res.data?.media_extended?.find(m => m.type === 'video');
-            if (media?.url) return media.url;
-            throw new Error('vxtwitter falló');
-        },
-        async () => {
-            const res = await axios.get(`https://twitsave.com/info?url=${encodeURIComponent(url)}`, axiosOpts);
-            const match = res.data.match(/https?:\/\/video\.twimg\.com\/[^"'\s]+\.mp4[^"'\s]*/);
-            if (match) return match[0];
-            throw new Error('twitsave falló');
-        }
-    ];
-    for (const api of apis) {
-        try { return await api(); } catch {}
-    }
-    throw new Error('No se pudo obtener el video de Twitter/X.');
+    if (!tweetId) throw new Error('URL inválida. Asegúrate de que el link contenga el ID del tweet.');
+    const errores = [];
+
+    try {
+        const res = await axios.get(`https://api.vxtwitter.com/Twitter/status/${tweetId}`, { ...axiosOpts, timeout: 15000 });
+        const media = res.data?.media_extended?.find(m => m.type === 'video');
+        if (media?.url) return media.url;
+        errores.push('vxtwitter: sin video');
+    } catch (e) { errores.push(`vxtwitter: ${e.message}`); }
+
+    try {
+        const res = await axios.get(`https://twitsave.com/info?url=${encodeURIComponent(url)}`, { ...axiosOpts, timeout: 15000 });
+        const match = res.data.match(/https?:\/\/video\.twimg\.com\/[^"'\s]+\.mp4[^"'\s]*/);
+        if (match) return match[0];
+        errores.push('twitsave: sin video');
+    } catch (e) { errores.push(`twitsave: ${e.message}`); }
+
+    console.error('Twitter falló todas las APIs:', errores.join(' | '));
+    throw new Error('No se pudo descargar el video de Twitter/X.');
 }
 
 async function cmdTwitter(sock, jid, args) {
