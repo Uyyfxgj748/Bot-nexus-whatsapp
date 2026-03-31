@@ -2,6 +2,7 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLat
 const pino = require('pino');
 const readline = require('readline');
 const { manejarMensaje } = require('./src/handler');
+const { getGrupo } = require('./src/database');
 
 function preguntarNumero() {
     return new Promise((resolve) => {
@@ -37,7 +38,7 @@ async function iniciarBot() {
 
     sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
         if (connection === 'open') {
-            console.log('✅ ¡Bot conectado y listo! Escribe !menu en WhatsApp para ver los comandos.');
+            console.log('✅ ¡Bot conectado y listo! Escribe #menu en WhatsApp para ver los comandos.');
         } else if (connection === 'close') {
             const codigo = lastDisconnect?.error?.output?.statusCode;
             const reconectar = codigo !== DisconnectReason.loggedOut;
@@ -50,10 +51,40 @@ async function iniciarBot() {
         }
     });
 
+    sock.ev.on('group-participants.update', async ({ id, participants, action }) => {
+        const g = getGrupo(id);
+        if (action === 'add' && g.bienvenida) {
+            for (const participante of participants) {
+                const mensaje = g.mensajeBienvenida
+                    .replace('@usuario', `@${participante.split('@')[0]}`);
+                await sock.sendMessage(id, {
+                    text: mensaje,
+                    mentions: [participante]
+                });
+            }
+        }
+        if (action === 'remove' && g.despedida) {
+            for (const participante of participants) {
+                const mensaje = g.mensajeDespedida
+                    .replace('@usuario', `@${participante.split('@')[0]}`);
+                await sock.sendMessage(id, {
+                    text: mensaje,
+                    mentions: [participante]
+                });
+            }
+        }
+    });
+
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
         for (const msg of messages) {
-            await manejarMensaje(sock, msg);
+            let groupMetadata = null;
+            if (msg.key.remoteJid.endsWith('@g.us')) {
+                try {
+                    groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
+                } catch {}
+            }
+            await manejarMensaje(sock, msg, groupMetadata);
         }
     });
 }
