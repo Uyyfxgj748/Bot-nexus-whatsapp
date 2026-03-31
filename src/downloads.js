@@ -83,39 +83,67 @@ async function cmdYoutubeAudio(sock, jid, args) {
     }
 }
 
+async function resolverURLTikTok(url) {
+    if (url.includes('/video/') && url.includes('tiktok.com/@')) return url;
+    return new Promise((resolve) => {
+        const https = require('https');
+        try {
+            const urlObj = new URL(url);
+            const req = https.request({
+                hostname: urlObj.hostname,
+                path: urlObj.pathname + urlObj.search,
+                method: 'GET',
+                headers: { 'User-Agent': 'WhatsApp/2.23.20.0 A', 'Accept': '*/*' }
+            }, (res) => {
+                const location = res.headers['location'] || '';
+                const idMatch = location.match(/\/video\/(\d+)/);
+                if (idMatch) {
+                    resolve(`https://www.tiktok.com/@user/video/${idMatch[1]}`);
+                } else {
+                    resolve(url);
+                }
+            });
+            req.on('error', () => resolve(url));
+            req.setTimeout(8000, () => { req.destroy(); resolve(url); });
+            req.end();
+        } catch { resolve(url); }
+    });
+}
+
 async function tiktokDescargar(url) {
+    const urlResuelta = await resolverURLTikTok(url);
     const errores = [];
     const headers = { ...axiosOpts.headers, 'Content-Type': 'application/x-www-form-urlencoded' };
 
-    // API 1: tikwm.com (probada y funciona)
+    // API 1: tikwm.com con URL resuelta
     try {
-        const params = new URLSearchParams({ url, hd: '0' });
+        const params = new URLSearchParams({ url: urlResuelta, hd: '0' });
         const res = await axios.post('https://www.tikwm.com/api/', params.toString(), { headers, timeout: 20000 });
         if (res.data?.code === 0 && res.data?.data?.play) {
             return { videoUrl: res.data.data.play, titulo: res.data.data.title || 'TikTok' };
         }
-        errores.push('tikwm: respuesta inesperada');
+        errores.push(`tikwm: código ${res.data?.code} - ${res.data?.msg}`);
     } catch (e) { errores.push(`tikwm: ${e.message}`); }
 
     // API 2: tiklydown v2
     try {
-        const res = await axios.get(`https://api.tiklydown.eu.org/api/download/v2?url=${encodeURIComponent(url)}`, { ...axiosOpts, timeout: 15000 });
+        const res = await axios.get(`https://api.tiklydown.eu.org/api/download/v2?url=${encodeURIComponent(urlResuelta)}`, { ...axiosOpts, timeout: 15000 });
         if (res.data?.video?.noWatermark) {
             return { videoUrl: res.data.video.noWatermark, titulo: res.data.title || 'TikTok' };
         }
-        errores.push('tiklydown: respuesta inesperada');
-    } catch (e) { errores.push(`tiklydown: ${e.message}`); }
+        errores.push('tiklydown v2: respuesta inesperada');
+    } catch (e) { errores.push(`tiklydown v2: ${e.message}`); }
 
     // API 3: tiklydown v1
     try {
-        const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(url)}`, { ...axiosOpts, timeout: 15000 });
+        const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(urlResuelta)}`, { ...axiosOpts, timeout: 15000 });
         if (res.data?.video?.noWatermark) {
             return { videoUrl: res.data.video.noWatermark, titulo: res.data.title || 'TikTok' };
         }
         errores.push('tiklydown v1: respuesta inesperada');
     } catch (e) { errores.push(`tiklydown v1: ${e.message}`); }
 
-    console.error('TikTok falló todas las APIs:', errores.join(' | '));
+    console.error('TikTok falló. URL original:', url, '| URL resuelta:', urlResuelta, '| Errores:', errores.join(' | '));
     throw new Error('No se pudo descargar el video. Asegúrate de que el link sea público y válido.');
 }
 
