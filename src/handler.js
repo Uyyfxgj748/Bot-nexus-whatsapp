@@ -1,9 +1,12 @@
+
 const OWNER = '124602017677540@lid'
+
 const fs = require('fs');
 
 const rutaEstado = './data/estado.json';
 
 let botActivo;
+
 
 // Cargar o crear estado
 if (fs.existsSync(rutaEstado)) {
@@ -20,18 +23,26 @@ function guardarEstado() {
 }
 
 const { enviarMenu } = require('./menu');
+
 const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
-const { cmdInteraccion, cmdNsfw, cmdNsfwAccion, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
+
+const { cmdInteraccion, cmdNsfw, cmdNsfwAccion,cmdWaifu, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
+
 const { cmdSticker, cmdStickerSearch } = require('./sticker');
+
 const { cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, cmdTwitter, cmdInstagram, cmdPinterest, cmdImagen } = require('./downloads');
+
 const { cmdPing, cmdStatus, cmdEliminar, cmdFotoPerfil, cmdTagAll, cmdStickerAImagen } = require('./utils');
+
 const { cmdPerfil, cmdSetbirth, cmdSetdesc, cmdSetgenre, cmdMarry, cmdDivorce, cmdLevel, cmdLeaderboard, cmdCumpleanos } = require('./profile');
+
 const { esAdmin, verificarAntilink, cmdKick, cmdPromote, cmdDemote, cmdAntilink, cmdClose, cmdSetwelcome, cmdSetgoodbye, cmdWelcome, cmdGoodbye, cmdOnlyadmin, cmdOpen, cmdWarn, cmdDelwarn, cmdWarns, cmdSetwarnlimit, cmdTopmensajes } = require('./admin');
+
 const { getUsuario, getGrupo, agregarExp } = require('./database');
 
 async function manejarMensaje(sock, msg, groupMetadata) {
     if (!msg.message || msg.key.fromMe) return;
-
+    
     const jid = msg.key.remoteJid;
     const senderJid = msg.key.participant || msg.key.remoteJid;
     
@@ -229,6 +240,10 @@ if (texto.toLowerCase() === '#on') {
                 await cmdSetwarnlimit(sock, jid, groupMetadata, senderJid, args); break;
             case 'topmensajes': case 'topcount': case 'topmessages': case 'topmsgcount':
                 await cmdTopmensajes(sock, jid); break;
+
+case 'waifu':
+    await cmdWaifu(sock, jid, args);
+    break;             
 
             // INTERACCIONES SFW / NSFW
             default:

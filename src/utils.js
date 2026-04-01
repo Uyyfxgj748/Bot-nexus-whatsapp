@@ -72,18 +72,30 @@ async function cmdTagAll(sock, jid, groupMetadata, args) {
 
 async function cmdStickerAImagen(sock, jid, msg) {
     const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
     if (!quoted || !quoted.stickerMessage) {
-        await sock.sendMessage(jid, { text: '❌ Responde a un sticker para convertirlo a imagen.' });
+        await sock.sendMessage(jid, {
+            text: '❌ Responde a un sticker para convertirlo a imagen.'
+        });
         return;
     }
+
     try {
-        const stream = await sock.downloadContentFromMessage(quoted.stickerMessage, 'sticker');
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        const buffer = Buffer.concat(chunks);
-        await sock.sendMessage(jid, { image: buffer, caption: '🖼️ Aquí tienes la imagen' });
+        const buffer = await sock.downloadMediaMessage({
+            message: quoted
+        });
+
+        await sock.sendMessage(jid, {
+            image: buffer,
+            caption: '🖼️ Aquí tienes tu sticker convertido en imagen'
+        });
+
     } catch (err) {
-        await sock.sendMessage(jid, { text: `❌ No pude convertir el sticker: ${err.message}` });
+        console.error(err);
+
+        await sock.sendMessage(jid, {
+            text: '❌ No pude convertir el sticker a imagen.'
+        });
     }
 }
 

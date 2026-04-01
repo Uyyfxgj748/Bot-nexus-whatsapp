@@ -14,5 +14,13 @@
     "mensajeDespedida": "Hasta luego @usuario 👋",
     "soloAdmin": false,
     "limiteAdvertencias": 3
+  },
+  "120363403232405912@g.us": {
+    "bienvenida": false,
+    "mensajeBienvenida": "¡Bienvenido/a @usuario al grupo!",
+    "despedida": false,
+    "mensajeDespedida": "Hasta luego @usuario 👋",
+    "soloAdmin": false,
+    "limiteAdvertencias": 3
   }
 }
