@@ -1,12 +1,12 @@
-const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+const execFileAsync = promisify(execFile);
+const YTDLP = 'yt-dlp';
 
 const axiosOpts = {
     timeout: 20000,
@@ -20,82 +20,108 @@ async function descargarBuffer(url) {
     return Buffer.from(res.data);
 }
 
+function esUrlYoutube(texto) {
+    return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(texto);
+}
+
+async function ytdlpEjecutar(args, timeout = 60000) {
+    return execFileAsync(YTDLP, args, { timeout, maxBuffer: 10 * 1024 * 1024 });
+}
+
+async function ytdlpBuscarUrl(query) {
+    const { stdout } = await ytdlpEjecutar([
+        `ytsearch1:${query}`,
+        '--print', '%(webpage_url)s\t%(title)s\t%(duration)s',
+        '--no-playlist',
+        '--quiet',
+        '--no-warnings'
+    ], 30000);
+    const linea = stdout.trim().split('\n')[0];
+    if (!linea) throw new Error('No se encontraron resultados.');
+    const [url, titulo, duracion] = linea.split('\t');
+    return { url, titulo: titulo || 'Sin título', duracion: parseInt(duracion) || 0 };
+}
+
 async function cmdYoutube(sock, jid, args) {
     const url = args[0];
-    if (!url || !ytdl.validateURL(url)) {
+    if (!url || !esUrlYoutube(url)) {
         await sock.sendMessage(jid, { text: '❌ Ingresa un link válido de YouTube.\nUso: *#yt <link>*' });
         return;
     }
     await sock.sendMessage(jid, { text: '⏳ Descargando video de YouTube...' });
     const tmpPath = path.join(os.tmpdir(), `yt_${Date.now()}.mp4`);
     try {
-        const info = await ytdl.getInfo(url);
-        const titulo = info.videoDetails.title;
-        if (parseInt(info.videoDetails.lengthSeconds) > 300) {
+        const { stdout: infoRaw } = await ytdlpEjecutar([
+            url, '--print', '%(title)s\t%(duration)s', '--no-playlist', '--quiet', '--no-warnings'
+        ], 20000);
+        const [titulo, durStr] = infoRaw.trim().split('\t');
+        const dur = parseInt(durStr) || 0;
+        if (dur > 300) {
             await sock.sendMessage(jid, { text: '❌ El video es muy largo. Máximo 5 minutos.' });
             return;
         }
-        const formato = ytdl.chooseFormat(info.formats, { quality: 'lowestvideo', filter: 'audioandvideo' });
-        await new Promise((resolve, reject) => {
-            ytdl.downloadFromInfo(info, { format: formato })
-                .pipe(fs.createWriteStream(tmpPath))
-                .on('finish', resolve)
-                .on('error', reject);
-        });
+        await ytdlpEjecutar([
+            url,
+            '-f', 'best[ext=mp4][filesize<50M]/best[filesize<50M]/best',
+            '-o', tmpPath,
+            '--no-playlist',
+            '--quiet',
+            '--no-warnings'
+        ], 90000);
         const buffer = await fs.readFile(tmpPath);
-        await sock.sendMessage(jid, { video: buffer, caption: `🎬 *${titulo}*` });
-        await fs.remove(tmpPath);
+        await sock.sendMessage(jid, { video: buffer, caption: `🎬 *${titulo || 'Video de YouTube'}*` });
+        await fs.remove(tmpPath).catch(() => {});
     } catch (err) {
         await fs.remove(tmpPath).catch(() => {});
-        await sock.sendMessage(jid, { text: `❌ Error al descargar YouTube: ${err.message}` });
+        await sock.sendMessage(jid, { text: `❌ Error al descargar video: ${err.message}` });
     }
-}
-
-async function buscarPrimerVideoYT(query) {
-    const res = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, {
-        ...axiosOpts, timeout: 15000
-    });
-    const match = res.data.match(/"videoId":"([A-Za-z0-9_-]{11})"/);
-    if (!match) throw new Error('No se encontraron resultados en YouTube.');
-    return `https://www.youtube.com/watch?v=${match[1]}`;
 }
 
 async function cmdYoutubeAudio(sock, jid, args) {
-    let url = args.join(' ');
-    if (!url) {
-        await sock.sendMessage(jid, { text: '❌ Uso: *#play <link o nombre de canción>*\nEjemplo: #play auronplay' });
+    let consulta = args.join(' ');
+    if (!consulta) {
+        await sock.sendMessage(jid, { text: '❌ Uso: *#play <link o nombre de canción>*\nEjemplo: #play Bad Bunny Titi me pregunto' });
         return;
     }
-    if (!ytdl.validateURL(url)) {
-        await sock.sendMessage(jid, { text: `🔍 Buscando: *${url}*...` });
+
+    let urlFinal = consulta;
+    let tituloFinal = '';
+
+    if (!esUrlYoutube(consulta)) {
+        await sock.sendMessage(jid, { text: `🔍 Buscando: *${consulta}*...` });
         try {
-            url = await buscarPrimerVideoYT(url);
+            const resultado = await ytdlpBuscarUrl(consulta);
+            urlFinal = resultado.url;
+            tituloFinal = resultado.titulo;
         } catch (err) {
-            await sock.sendMessage(jid, { text: `❌ No encontré resultados para: *${args.join(' ')}*` });
+            await sock.sendMessage(jid, { text: `❌ No encontré resultados para: *${consulta}*` });
             return;
         }
     }
-    await sock.sendMessage(jid, { text: '⏳ Descargando audio de YouTube...' });
-    const tmpInput = path.join(os.tmpdir(), `yta_in_${Date.now()}.webm`);
-    const tmpMp3 = path.join(os.tmpdir(), `yta_out_${Date.now()}.mp3`);
+
+    await sock.sendMessage(jid, { text: `⏳ Descargando audio${tituloFinal ? `: *${tituloFinal}*` : ''}...` });
+    const tmpBase = path.join(os.tmpdir(), `yta_${Date.now()}`);
+    const tmpMp3 = `${tmpBase}.mp3`;
     try {
-        const info = await ytdl.getInfo(url);
-        const titulo = info.videoDetails.title;
-        await new Promise((resolve, reject) => {
-            ytdl.downloadFromInfo(info, { quality: 'lowestaudio', filter: 'audioonly' })
-                .pipe(fs.createWriteStream(tmpInput))
-                .on('finish', resolve)
-                .on('error', reject);
-        });
-        await new Promise((resolve, reject) => {
-            ffmpeg(tmpInput).toFormat('mp3').on('end', resolve).on('error', reject).save(tmpMp3);
-        });
+        await ytdlpEjecutar([
+            urlFinal,
+            '-x',
+            '--audio-format', 'mp3',
+            '--audio-quality', '5',
+            '-o', `${tmpBase}.%(ext)s`,
+            '--no-playlist',
+            '--quiet',
+            '--no-warnings'
+        ], 120000);
         const buffer = await fs.readFile(tmpMp3);
-        await sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/mpeg', ptt: false, fileName: `${titulo}.mp3` });
-        await fs.remove(tmpInput).catch(() => {});
+        await sock.sendMessage(jid, {
+            audio: buffer,
+            mimetype: 'audio/mpeg',
+            ptt: false,
+            fileName: `${tituloFinal || 'audio'}.mp3`
+        });
         await fs.remove(tmpMp3).catch(() => {});
     } catch (err) {
-        await fs.remove(tmpInput).catch(() => {});
         await fs.remove(tmpMp3).catch(() => {});
         await sock.sendMessage(jid, { text: `❌ Error al descargar audio: ${err.message}` });
     }
@@ -109,21 +135,27 @@ async function cmdYoutubeSearch(sock, jid, args) {
     }
     await sock.sendMessage(jid, { text: `🔍 Buscando: *${query}*...` });
     try {
-        const res = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, {
-            ...axiosOpts, timeout: 15000
-        });
-        const matches = [...res.data.matchAll(/"videoId":"([^"]+)","thumbnail".*?"title":\{"runs":\[\{"text":"([^"]+)"/g)];
-        if (!matches || matches.length === 0) {
+        const { stdout } = await ytdlpEjecutar([
+            `ytsearch5:${query}`,
+            '--print', '%(webpage_url)s\t%(title)s\t%(duration_string)s',
+            '--no-playlist',
+            '--quiet',
+            '--no-warnings'
+        ], 30000);
+        const lineas = stdout.trim().split('\n').filter(Boolean);
+        if (!lineas.length) {
             await sock.sendMessage(jid, { text: '❌ No se encontraron resultados.' });
             return;
         }
         let texto = `🎬 *Resultados para:* _${query}_\n\n`;
-        const max = Math.min(5, matches.length);
-        for (let i = 0; i < max; i++) {
-            const [, videoId, titulo] = matches[i];
-            texto += `*${i + 1}.* ${titulo}\n🔗 https://youtu.be/${videoId}\n\n`;
-        }
-        texto += '👉 Copia el link y usa *#yt <link>* para descargar';
+        lineas.forEach((linea, i) => {
+            const partes = linea.split('\t');
+            const url = partes[0];
+            const titulo = partes[1] || 'Sin título';
+            const dur = partes[2] || '';
+            texto += `*${i + 1}.* ${titulo} _(${dur})_\n🔗 ${url}\n\n`;
+        });
+        texto += '👉 Usa *#play <link>* o *#yt <link>* para descargar';
         await sock.sendMessage(jid, { text: texto });
     } catch (err) {
         await sock.sendMessage(jid, { text: `❌ Error en la búsqueda: ${err.message}` });
