@@ -3,12 +3,19 @@
     "nombre": "202207764951281",
     "monedas": 0,
     "ultimoDiario": 1774942186685,
-    "inventario": [],
-    "nivel": 2,
-    "experiencia": 160,
-    "banco": 10000,
+    "inventario": [
+      {
+        "id": 6,
+        "nombre": "Pack Stickers Anime",
+        "emoji": "🎭",
+        "tipo": "sticker"
+      }
+    ],
+    "nivel": 3,
+    "experiencia": 10,
+    "banco": 9600,
     "ultimoTrabajo": 1775024256805,
-    "mensajes": 52,
+    "mensajes": 62,
     "pareja": null,
     "cumpleanos": null,
     "genero": null,

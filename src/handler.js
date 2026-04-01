@@ -1,3 +1,5 @@
+let botActivo = true;
+
 const { enviarMenu } = require('./menu');
 const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
 const { cmdInteraccion, cmdNsfw, cmdNsfwAccion, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
@@ -23,29 +25,51 @@ async function manejarMensaje(sock, msg, groupMetadata) {
         ''
     ).trim();
 
-    if (esGrupo && texto) {
-        agregarExp(senderJid, 5);
+    // 🔘 COMANDOS ON/OFF
+    if (texto.toLowerCase() === '#off') {
+        botActivo = false;
+        await sock.sendMessage(jid, { text: '😴 Bot desactivado' });
+        return;
     }
 
+    if (texto.toLowerCase() === '#on') {
+        botActivo = true;
+        await sock.sendMessage(jid, { text: '⚡ Bot activado' });
+        return;
+    }
+
+    // 🔒 BLOQUEO GLOBAL AMIGABLE
+    if (!botActivo) {
+        if (texto.startsWith('#')) {
+            await sock.sendMessage(jid, { text: '⚠️ El bot está apagado. Usa #on para activarlo.' });
+        }
+        return;
+    }
+
+    // EXP EN GRUPOS
+    if (esGrupo && texto) agregarExp(senderJid, 5);
+
+    // VERIFICAR ANTILINK
     if (esGrupo && texto && !texto.startsWith('#')) {
         await verificarAntilink(sock, jid, msg, groupMetadata, senderJid);
     }
 
+    // SOLO COMANDOS
     if (!texto.startsWith('#')) return;
 
     const [cmd, ...args] = texto.slice(1).toLowerCase().split(' ');
     const mencionados = msg.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
-
     const g = esGrupo ? getGrupo(jid) : null;
+
     if (g && g.soloAdmin && !esAdmin(groupMetadata, senderJid)) return;
 
     getUsuario(senderJid);
 
     try {
         switch (cmd) {
+            // MENÚ Y UTILIDADES
             case 'menu': case 'ayuda': case 'help': case 'commands': case 'comandos':
                 await enviarMenu(sock, jid); break;
-
             case 'ping': case 'p':
                 await cmdPing(sock, jid); break;
             case 'status': case 'botinfo': case 'infobot':
@@ -59,6 +83,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
             case 'toimage': case 'toimg':
                 await cmdStickerAImagen(sock, jid, msg); break;
 
+            // ECONOMÍA
             case 'saldo': case 'balance': case 'bal': case 'coins':
                 await cmdSaldo(sock, jid, senderJid); break;
             case 'diario': case 'daily':
@@ -90,6 +115,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
             case 'inventario':
                 await cmdInventario(sock, jid, senderJid); break;
 
+            // PERFIL
             case 'perfil': case 'profile':
                 await cmdPerfil(sock, jid, senderJid, mencionados); break;
             case 'setbirth':
@@ -109,11 +135,13 @@ async function manejarMensaje(sock, msg, groupMetadata) {
             case 'cumpleanos': case 'cumpleaños': case 'birthdays':
                 await cmdCumpleanos(sock, jid); break;
 
+            // STICKERS
             case 'sticker': case 's': case 'stickers':
                 await cmdSticker(sock, jid, msg); break;
             case 'stickersearch': case 'sticker_search': case 'stickerbus':
                 await cmdStickerSearch(sock, jid, args); break;
 
+            // DESCARGAS
             case 'yt': case 'mp4': case 'ytmp4':
                 await cmdYoutube(sock, jid, args); break;
             case 'play': case 'ytaudio': case 'playaudio':
@@ -131,6 +159,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
             case 'img':
                 await cmdImagen(sock, jid, args); break;
 
+            // ADMIN
             case 'setwelcome':
                 await cmdSetwelcome(sock, jid, groupMetadata, senderJid, args); break;
             case 'setgoodbye':
@@ -164,6 +193,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
             case 'topmensajes': case 'topcount': case 'topmessages': case 'topmsgcount':
                 await cmdTopmensajes(sock, jid); break;
 
+            // INTERACCIONES SFW / NSFW
             default:
                 if (TODO_SFW.includes(cmd)) {
                     await cmdInteraccion(sock, jid, senderJid, cmd, mencionados);
