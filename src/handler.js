@@ -1,4 +1,23 @@
-let botActivo = true;
+const OWNER = '124602017677540@lid'
+const fs = require('fs');
+
+const rutaEstado = './data/estado.json';
+
+let botActivo;
+
+// Cargar o crear estado
+if (fs.existsSync(rutaEstado)) {
+    const data = JSON.parse(fs.readFileSync(rutaEstado));
+    botActivo = data.activo;
+} else {
+    botActivo = true;
+    fs.writeFileSync(rutaEstado, JSON.stringify({ activo: true }, null, 2));
+}
+
+// Guardar estado
+function guardarEstado() {
+    fs.writeFileSync(rutaEstado, JSON.stringify({ activo: botActivo }, null, 2));
+}
 
 const { enviarMenu } = require('./menu');
 const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
@@ -15,6 +34,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
 
     const jid = msg.key.remoteJid;
     const senderJid = msg.key.participant || msg.key.remoteJid;
+    
     const esGrupo = jid.endsWith('@g.us');
 
     const texto = (
@@ -25,18 +45,35 @@ async function manejarMensaje(sock, msg, groupMetadata) {
         ''
     ).trim();
 
-    // 🔘 COMANDOS ON/OFF
-    if (texto.toLowerCase() === '#off') {
-        botActivo = false;
-        await sock.sendMessage(jid, { text: '😴 Bot desactivado' });
+             //COMANDOS OFF ON
+    
+    // 🔴 OFF
+if (texto.toLowerCase() === '#off') {
+
+    if (senderJid !== OWNER) {
+        await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
         return;
     }
 
-    if (texto.toLowerCase() === '#on') {
-        botActivo = true;
-        await sock.sendMessage(jid, { text: '⚡ Bot activado' });
+    botActivo = false;
+    guardarEstado();
+    await sock.sendMessage(jid, { text: '😴 Bot desactivado' });
+    return;
+}
+
+// 🟢 ON
+if (texto.toLowerCase() === '#on') {
+
+    if (senderJid !== OWNER) {
+        await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
         return;
     }
+
+    botActivo = true;
+    guardarEstado();
+    await sock.sendMessage(jid, { text: '⚡ Bot activado' });
+    return;
+}
 
     // 🔒 BLOQUEO GLOBAL AMIGABLE
     if (!botActivo) {
