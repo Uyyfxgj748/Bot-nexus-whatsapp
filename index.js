@@ -25,19 +25,26 @@ async function iniciarBot() {
         logger: pino({ level: 'silent' })
     });
 
-    if (!sock.authState.creds.registered) {
-        const numero = await preguntarNumero();
-        const numeroFormateado = numero.replace(/[^0-9]/g, '');
-        const codigo = await sock.requestPairingCode(numeroFormateado);
-        console.log(`\n✅ Tu código de emparejamiento es: ${codigo}`);
-        console.log('👉 Abre WhatsApp > Dispositivos vinculados > Vincular con número de teléfono');
-        console.log('   Ingresa el código y espera la conexión...\n');
-    }
-
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-        if (connection === 'open') {
+    let codigoSolicitado = false;
+
+    sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
+        if (connection === 'connecting' && !sock.authState.creds.registered && !codigoSolicitado) {
+            codigoSolicitado = true;
+            try {
+                await new Promise(r => setTimeout(r, 3000));
+                const numero = process.env.PHONE_NUMBER || await preguntarNumero();
+                const numeroFormateado = numero.replace(/[^0-9]/g, '');
+                const codigo = await sock.requestPairingCode(numeroFormateado);
+                console.log(`\n✅ Tu código de emparejamiento es: ${codigo}`);
+                console.log('👉 Abre WhatsApp > Dispositivos vinculados > Vincular con número de teléfono');
+                console.log('   Ingresa el código y espera la conexión...\n');
+            } catch (e) {
+                console.log('⚠️ Error al solicitar código, reintentando...');
+                codigoSolicitado = false;
+            }
+        } else if (connection === 'open') {
             console.log('✅ ¡Bot conectado y listo! Escribe #menu en WhatsApp para ver los comandos.');
         } else if (connection === 'close') {
             const codigo = lastDisconnect?.error?.output?.statusCode;
