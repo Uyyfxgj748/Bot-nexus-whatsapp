@@ -73,13 +73,42 @@ async function cmdYoutubeAudio(sock, jid, args) {
             ffmpeg(tmpInput).toFormat('mp3').on('end', resolve).on('error', reject).save(tmpMp3);
         });
         const buffer = await fs.readFile(tmpMp3);
-        await sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/mpeg', ptt: false });
+        await sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/mpeg', ptt: false, fileName: `${titulo}.mp3` });
         await fs.remove(tmpInput).catch(() => {});
         await fs.remove(tmpMp3).catch(() => {});
     } catch (err) {
         await fs.remove(tmpInput).catch(() => {});
         await fs.remove(tmpMp3).catch(() => {});
         await sock.sendMessage(jid, { text: `❌ Error al descargar audio: ${err.message}` });
+    }
+}
+
+async function cmdYoutubeSearch(sock, jid, args) {
+    const query = args.join(' ');
+    if (!query) {
+        await sock.sendMessage(jid, { text: '❌ Uso: *#search <búsqueda>*\nEjemplo: #search Bad Bunny' });
+        return;
+    }
+    await sock.sendMessage(jid, { text: `🔍 Buscando: *${query}*...` });
+    try {
+        const res = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, {
+            ...axiosOpts, timeout: 15000
+        });
+        const matches = [...res.data.matchAll(/"videoId":"([^"]+)","thumbnail".*?"title":\{"runs":\[\{"text":"([^"]+)"/g)];
+        if (!matches || matches.length === 0) {
+            await sock.sendMessage(jid, { text: '❌ No se encontraron resultados.' });
+            return;
+        }
+        let texto = `🎬 *Resultados para:* _${query}_\n\n`;
+        const max = Math.min(5, matches.length);
+        for (let i = 0; i < max; i++) {
+            const [, videoId, titulo] = matches[i];
+            texto += `*${i + 1}.* ${titulo}\n🔗 https://youtu.be/${videoId}\n\n`;
+        }
+        texto += '👉 Copia el link y usa *#yt <link>* para descargar';
+        await sock.sendMessage(jid, { text: texto });
+    } catch (err) {
+        await sock.sendMessage(jid, { text: `❌ Error en la búsqueda: ${err.message}` });
     }
 }
 
@@ -115,7 +144,6 @@ async function tiktokDescargar(url) {
     const errores = [];
     const headers = { ...axiosOpts.headers, 'Content-Type': 'application/x-www-form-urlencoded' };
 
-    // API 1: tikwm.com con URL resuelta
     try {
         const params = new URLSearchParams({ url: urlResuelta, hd: '0' });
         const res = await axios.post('https://www.tikwm.com/api/', params.toString(), { headers, timeout: 20000 });
@@ -125,7 +153,6 @@ async function tiktokDescargar(url) {
         errores.push(`tikwm: código ${res.data?.code} - ${res.data?.msg}`);
     } catch (e) { errores.push(`tikwm: ${e.message}`); }
 
-    // API 2: tiklydown v2
     try {
         const res = await axios.get(`https://api.tiklydown.eu.org/api/download/v2?url=${encodeURIComponent(urlResuelta)}`, { ...axiosOpts, timeout: 15000 });
         if (res.data?.video?.noWatermark) {
@@ -134,7 +161,6 @@ async function tiktokDescargar(url) {
         errores.push('tiklydown v2: respuesta inesperada');
     } catch (e) { errores.push(`tiklydown v2: ${e.message}`); }
 
-    // API 3: tiklydown v1
     try {
         const res = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(urlResuelta)}`, { ...axiosOpts, timeout: 15000 });
         if (res.data?.video?.noWatermark) {
@@ -143,7 +169,6 @@ async function tiktokDescargar(url) {
         errores.push('tiklydown v1: respuesta inesperada');
     } catch (e) { errores.push(`tiklydown v1: ${e.message}`); }
 
-    console.error('TikTok falló. URL original:', url, '| URL resuelta:', urlResuelta, '| Errores:', errores.join(' | '));
     throw new Error('No se pudo descargar el video. Asegúrate de que el link sea público y válido.');
 }
 
@@ -182,7 +207,6 @@ async function twitterDescargar(url) {
         errores.push('twitsave: sin video');
     } catch (e) { errores.push(`twitsave: ${e.message}`); }
 
-    console.error('Twitter falló todas las APIs:', errores.join(' | '));
     throw new Error('No se pudo descargar el video de Twitter/X.');
 }
 
@@ -202,6 +226,93 @@ async function cmdTwitter(sock, jid, args) {
     }
 }
 
+async function instagramDescargar(url) {
+    const errores = [];
+    try {
+        const res = await axios.get(`https://api.snapinsta.app/v1/media?url=${encodeURIComponent(url)}`, {
+            ...axiosOpts, timeout: 15000
+        });
+        if (res.data?.data?.[0]?.url) return res.data.data[0].url;
+        errores.push('snapinsta: sin resultado');
+    } catch (e) { errores.push(`snapinsta: ${e.message}`); }
+
+    try {
+        const res = await axios.post('https://www.saveig.app/api/convert', { url }, {
+            headers: { ...axiosOpts.headers, 'Content-Type': 'application/json' },
+            timeout: 15000
+        });
+        if (res.data?.data?.[0]?.url) return res.data.data[0].url;
+        errores.push('saveig: sin resultado');
+    } catch (e) { errores.push(`saveig: ${e.message}`); }
+
+    try {
+        const reelId = url.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/)?.[1];
+        if (reelId) {
+            const res = await axios.get(`https://www.instagram.com/p/${reelId}/?__a=1&__d=dis`, {
+                headers: { ...axiosOpts.headers, 'Cookie': 'sessionid=0' }, timeout: 15000
+            });
+            const videoUrl = res.data?.items?.[0]?.video_versions?.[0]?.url;
+            if (videoUrl) return videoUrl;
+        }
+        errores.push('instagram api: sin video');
+    } catch (e) { errores.push(`instagram api: ${e.message}`); }
+
+    throw new Error('No se pudo descargar el reel. Asegúrate de que el link sea público.');
+}
+
+async function cmdInstagram(sock, jid, args) {
+    const url = args[0];
+    if (!url || (!url.includes('instagram.com') && !url.includes('instagr.am'))) {
+        await sock.sendMessage(jid, { text: '❌ Ingresa un link válido de Instagram.\nUso: *#ig <link>*' });
+        return;
+    }
+    await sock.sendMessage(jid, { text: '⏳ Descargando reel de Instagram...' });
+    try {
+        const mediaUrl = await instagramDescargar(url);
+        const buffer = await descargarBuffer(mediaUrl);
+        const esVideo = mediaUrl.includes('.mp4') || !mediaUrl.includes('.jpg');
+        if (esVideo) {
+            await sock.sendMessage(jid, { video: buffer, caption: '📸 Reel de Instagram' });
+        } else {
+            await sock.sendMessage(jid, { image: buffer, caption: '📸 Imagen de Instagram' });
+        }
+    } catch (err) {
+        await sock.sendMessage(jid, { text: `❌ Error al descargar Instagram: ${err.message}` });
+    }
+}
+
+async function cmdPinterest(sock, jid, args) {
+    const query = args.join(' ');
+    if (!query) {
+        await sock.sendMessage(jid, { text: '❌ Uso: *#pinterest <búsqueda>*\nEjemplo: #pinterest anime wallpaper' });
+        return;
+    }
+    await sock.sendMessage(jid, { text: `🔍 Buscando en Pinterest: *${query}*...` });
+    try {
+        const res = await axios.get(`https://api.pinterest.com/v3/search/boards/?q=${encodeURIComponent(query)}&page_size=5`, {
+            ...axiosOpts, timeout: 15000
+        });
+        if (res.data?.data?.[0]?.image_cover_url) {
+            const imgUrl = res.data.data[0].image_cover_url;
+            const buffer = await descargarBuffer(imgUrl);
+            await sock.sendMessage(jid, { image: buffer, caption: `📌 Pinterest: *${query}*` });
+            return;
+        }
+        const res2 = await axios.get(`https://www.pinterest.com/search/pins/?q=${encodeURIComponent(query)}&rs=typed`, {
+            headers: { ...axiosOpts.headers, 'Accept': 'application/json' }, timeout: 15000
+        });
+        const match = res2.data.match(/"url":"(https:\/\/i\.pinimg\.com[^"]+\.jpg)"/);
+        if (match) {
+            const buffer = await descargarBuffer(match[1]);
+            await sock.sendMessage(jid, { image: buffer, caption: `📌 Pinterest: *${query}*` });
+        } else {
+            await sock.sendMessage(jid, { text: '❌ No se encontraron imágenes en Pinterest.' });
+        }
+    } catch (err) {
+        await sock.sendMessage(jid, { text: `❌ Error al buscar en Pinterest: ${err.message}` });
+    }
+}
+
 async function cmdImagen(sock, jid, args) {
     const url = args[0];
     if (!url) {
@@ -216,4 +327,4 @@ async function cmdImagen(sock, jid, args) {
     }
 }
 
-module.exports = { cmdYoutube, cmdYoutubeAudio, cmdTiktok, cmdTwitter, cmdImagen };
+module.exports = { cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, cmdTwitter, cmdInstagram, cmdPinterest, cmdImagen };

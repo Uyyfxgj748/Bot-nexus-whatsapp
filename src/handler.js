@@ -1,15 +1,12 @@
 const { enviarMenu } = require('./menu');
-const { cmdSaldo, cmdDiario, cmdWork, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
-const { cmdInteraccion, cmdNsfw } = require('./interactions');
+const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
+const { cmdInteraccion, cmdNsfw, cmdNsfwAccion, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
 const { cmdSticker } = require('./sticker');
-const { cmdYoutube, cmdYoutubeAudio, cmdTiktok, cmdTwitter, cmdImagen } = require('./downloads');
+const { cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, cmdTwitter, cmdInstagram, cmdPinterest, cmdImagen } = require('./downloads');
 const { cmdPing, cmdStatus, cmdEliminar, cmdFotoPerfil, cmdTagAll, cmdStickerAImagen } = require('./utils');
 const { cmdPerfil, cmdSetbirth, cmdSetdesc, cmdSetgenre, cmdMarry, cmdDivorce, cmdLevel, cmdLeaderboard, cmdCumpleanos } = require('./profile');
-const { esAdmin, cmdSetwelcome, cmdSetgoodbye, cmdWelcome, cmdOnlyadmin, cmdOpen, cmdWarn, cmdWarns, cmdSetwarnlimit, cmdTopmensajes } = require('./admin');
+const { esAdmin, verificarAntilink, cmdKick, cmdPromote, cmdDemote, cmdAntilink, cmdClose, cmdSetwelcome, cmdSetgoodbye, cmdWelcome, cmdGoodbye, cmdOnlyadmin, cmdOpen, cmdWarn, cmdDelwarn, cmdWarns, cmdSetwarnlimit, cmdTopmensajes } = require('./admin');
 const { getUsuario, getGrupo, agregarExp } = require('./database');
-
-const INTERACCIONES_SFW = ['abrazar', 'besar', 'golpear', 'acariciar', 'bailar'];
-const NSFW_CMDS = ['neko', 'waifu', 'hentai'];
 
 async function manejarMensaje(sock, msg, groupMetadata) {
     if (!msg.message || msg.key.fromMe) return;
@@ -30,6 +27,10 @@ async function manejarMensaje(sock, msg, groupMetadata) {
         agregarExp(senderJid, 5);
     }
 
+    if (esGrupo && texto && !texto.startsWith('#')) {
+        await verificarAntilink(sock, jid, msg, groupMetadata, senderJid);
+    }
+
     if (!texto.startsWith('#')) return;
 
     const [cmd, ...args] = texto.slice(1).toLowerCase().split(' ');
@@ -47,24 +48,30 @@ async function manejarMensaje(sock, msg, groupMetadata) {
 
             case 'ping': case 'p':
                 await cmdPing(sock, jid); break;
-            case 'status':
+            case 'status': case 'botinfo': case 'infobot':
                 await cmdStatus(sock, jid); break;
             case 'del': case 'delete':
                 await cmdEliminar(sock, jid, msg); break;
             case 'pfp': case 'getpic':
                 await cmdFotoPerfil(sock, jid, senderJid, mencionados); break;
-            case 'tagall': case 'tag':
+            case 'tagall': case 'tag': case 'hidetag': case 'tagsay':
                 await cmdTagAll(sock, jid, groupMetadata, args); break;
             case 'toimage': case 'toimg':
                 await cmdStickerAImagen(sock, jid, msg); break;
 
-            case 'saldo':
+            case 'saldo': case 'balance': case 'bal': case 'coins':
                 await cmdSaldo(sock, jid, senderJid); break;
-            case 'diario':
+            case 'diario': case 'daily':
                 await cmdDiario(sock, jid, senderJid); break;
             case 'work': case 'w': case 'trabajar':
                 await cmdWork(sock, jid, senderJid); break;
-            case 'depositar': case 'deposit': case 'dep':
+            case 'crime': case 'crimen':
+                await cmdCrime(sock, jid, senderJid); break;
+            case 'slut':
+                await cmdSlut(sock, jid, senderJid); break;
+            case 'coinflip': case 'flip': case 'cf':
+                await cmdCoinflip(sock, jid, senderJid, args); break;
+            case 'depositar': case 'deposit': case 'dep': case 'd':
                 await cmdDeposit(sock, jid, senderJid, args); break;
             case 'retirar': case 'withdraw': case 'with':
                 await cmdWithdraw(sock, jid, senderJid, args); break;
@@ -72,7 +79,7 @@ async function manejarMensaje(sock, msg, groupMetadata) {
                 await cmdRoulette(sock, jid, senderJid, args); break;
             case 'robar': case 'steal': case 'rob':
                 await cmdSteal(sock, jid, senderJid, mencionados); break;
-            case 'transferir': case 'givecoins': case 'pay':
+            case 'transferir': case 'givecoins': case 'pay': case 'coinsgive':
                 await cmdTransferir(sock, jid, senderJid, mencionados, args); break;
             case 'baltop': case 'economyboard': case 'eboard':
                 await cmdBaltop(sock, jid); break;
@@ -109,37 +116,59 @@ async function manejarMensaje(sock, msg, groupMetadata) {
                 await cmdYoutube(sock, jid, args); break;
             case 'play': case 'ytaudio': case 'playaudio':
                 await cmdYoutubeAudio(sock, jid, args); break;
+            case 'ytsearch': case 'search':
+                await cmdYoutubeSearch(sock, jid, args); break;
             case 'tiktok': case 'tt':
                 await cmdTiktok(sock, jid, args); break;
             case 'twitter': case 'x':
                 await cmdTwitter(sock, jid, args); break;
+            case 'instagram': case 'ig': case 'reel':
+                await cmdInstagram(sock, jid, args); break;
+            case 'pinterest': case 'pin':
+                await cmdPinterest(sock, jid, args); break;
             case 'img':
                 await cmdImagen(sock, jid, args); break;
 
-            case 'setwelcome': case 'bienvenida':
+            case 'setwelcome':
                 await cmdSetwelcome(sock, jid, groupMetadata, senderJid, args); break;
             case 'setgoodbye':
                 await cmdSetgoodbye(sock, jid, groupMetadata, senderJid, args); break;
-            case 'welcome':
+            case 'welcome': case 'bienvenida':
                 await cmdWelcome(sock, jid, groupMetadata, senderJid, args); break;
+            case 'goodbye': case 'despedida':
+                await cmdGoodbye(sock, jid, groupMetadata, senderJid, args); break;
             case 'onlyadmin': case 'onlyadmins':
                 await cmdOnlyadmin(sock, jid, groupMetadata, senderJid, args); break;
             case 'open':
                 await cmdOpen(sock, jid, groupMetadata, senderJid); break;
+            case 'close':
+                await cmdClose(sock, jid, groupMetadata, senderJid); break;
+            case 'kick':
+                await cmdKick(sock, jid, groupMetadata, senderJid, mencionados); break;
+            case 'promote':
+                await cmdPromote(sock, jid, groupMetadata, senderJid, mencionados); break;
+            case 'demote':
+                await cmdDemote(sock, jid, groupMetadata, senderJid, mencionados); break;
+            case 'antilink': case 'antienlace':
+                await cmdAntilink(sock, jid, groupMetadata, senderJid, args); break;
             case 'warn':
                 await cmdWarn(sock, jid, groupMetadata, senderJid, mencionados, args); break;
+            case 'delwarn':
+                await cmdDelwarn(sock, jid, groupMetadata, senderJid, mencionados); break;
             case 'warns':
                 await cmdWarns(sock, jid, groupMetadata, senderJid, mencionados); break;
             case 'setwarnlimit':
                 await cmdSetwarnlimit(sock, jid, groupMetadata, senderJid, args); break;
-            case 'topmensajes': case 'topcount': case 'topmessages':
+            case 'topmensajes': case 'topcount': case 'topmessages': case 'topmsgcount':
                 await cmdTopmensajes(sock, jid); break;
 
             default:
-                if (INTERACCIONES_SFW.includes(cmd)) {
+                if (TODO_SFW.includes(cmd)) {
                     await cmdInteraccion(sock, jid, senderJid, cmd, mencionados);
-                } else if (NSFW_CMDS.includes(cmd)) {
+                } else if (TODO_NSFW_IMG.includes(cmd)) {
                     await cmdNsfw(sock, jid, cmd);
+                } else if (TODO_NSFW_ACCION.includes(cmd)) {
+                    await cmdNsfwAccion(sock, jid, senderJid, cmd, mencionados);
                 }
         }
     } catch (err) {

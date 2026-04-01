@@ -1,4 +1,4 @@
-# Nekos Bot - WhatsApp
+# Nexus Bot - WhatsApp
 
 Bot de WhatsApp completo con múltiples funciones, construido con Node.js y Baileys.
 
