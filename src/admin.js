@@ -81,14 +81,14 @@ async function cmdAntilink(sock, jid, groupMetadata, senderJid, args) {
         return;
     }
     const opcion = args[0];
-    if (!opcion || !['enable', 'disable'].includes(opcion)) {
+    if (!opcion || !['enable', 'disable', 'on', 'off'].includes(opcion)) {
         await sock.sendMessage(jid, { text: '❌ Uso: #antilink enable | disable' });
         return;
     }
     const g = getGrupo(jid);
-    g.antilink = opcion === 'enable';
+    g.antilink = opcion === 'enable' || opcion === 'on';
     guardarGrupo(jid, g);
-    await sock.sendMessage(jid, { text: `🔗 Antilink *${opcion === 'enable' ? 'activado ✅' : 'desactivado ❌'}*` });
+    await sock.sendMessage(jid, { text: `🔗 Antilink *${opcion === 'enable' || opcion === 'on' ? 'activado ✅' : 'desactivado ❌'}*` });
 }
 
 async function verificarAntilink(sock, jid, msg, groupMetadata, senderJid) {
@@ -150,14 +150,14 @@ async function cmdWelcome(sock, jid, groupMetadata, senderJid, args) {
         return;
     }
     const opcion = args[0];
-    if (!opcion || !['enable', 'disable'].includes(opcion)) {
+    if (!opcion || !['enable', 'disable', 'on', 'off'].includes(opcion)) {
         await sock.sendMessage(jid, { text: '❌ Uso: #welcome enable | disable' });
         return;
     }
     const g = getGrupo(jid);
-    g.bienvenida = opcion === 'enable';
+    g.bienvenida = opcion === 'enable' || opcion === 'on';
     guardarGrupo(jid, g);
-    await sock.sendMessage(jid, { text: `✅ Bienvenida *${opcion === 'enable' ? 'activada ✅' : 'desactivada ❌'}*` });
+    await sock.sendMessage(jid, { text: `✅ Bienvenida *${opcion === 'enable' || opcion === 'on' ? 'activada ✅' : 'desactivada ❌'}*` });
 }
 
 async function cmdGoodbye(sock, jid, groupMetadata, senderJid, args) {
@@ -166,14 +166,14 @@ async function cmdGoodbye(sock, jid, groupMetadata, senderJid, args) {
         return;
     }
     const opcion = args[0];
-    if (!opcion || !['enable', 'disable'].includes(opcion)) {
+    if (!opcion || !['enable', 'disable', 'on', 'off'].includes(opcion)) {
         await sock.sendMessage(jid, { text: '❌ Uso: #goodbye enable | disable' });
         return;
     }
     const g = getGrupo(jid);
-    g.despedida = opcion === 'enable';
+    g.despedida = opcion === 'enable' || opcion === 'on';
     guardarGrupo(jid, g);
-    await sock.sendMessage(jid, { text: `✅ Despedida *${opcion === 'enable' ? 'activada ✅' : 'desactivada ❌'}*` });
+    await sock.sendMessage(jid, { text: `✅ Despedida *${opcion === 'enable' || opcion === 'on' ? 'activada ✅' : 'desactivada ❌'}*` });
 }
 
 async function cmdOnlyadmin(sock, jid, groupMetadata, senderJid, args) {
@@ -182,14 +182,14 @@ async function cmdOnlyadmin(sock, jid, groupMetadata, senderJid, args) {
         return;
     }
     const opcion = args[0];
-    if (!opcion || !['enable', 'disable'].includes(opcion)) {
+    if (!opcion || !['enable', 'disable', 'on', 'off'].includes(opcion)) {
         await sock.sendMessage(jid, { text: '❌ Uso: #onlyadmin enable | disable' });
         return;
     }
     const g = getGrupo(jid);
-    g.soloAdmin = opcion === 'enable';
+    g.soloAdmin = opcion === 'enable' || opcion === 'on';
     guardarGrupo(jid, g);
-    await sock.sendMessage(jid, { text: `✅ Modo solo admins *${opcion === 'enable' ? 'activado ✅' : 'desactivado ❌'}*` });
+    await sock.sendMessage(jid, { text: `✅ Modo solo admins *${opcion === 'enable' || opcion === 'on' ? 'activado ✅' : 'desactivado ❌'}*` });
 }
 
 async function cmdOpen(sock, jid, groupMetadata, senderJid) {

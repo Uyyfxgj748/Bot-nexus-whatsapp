@@ -51,11 +51,29 @@ async function cmdYoutube(sock, jid, args) {
     }
 }
 
+async function buscarPrimerVideoYT(query) {
+    const res = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, {
+        ...axiosOpts, timeout: 15000
+    });
+    const match = res.data.match(/"videoId":"([A-Za-z0-9_-]{11})"/);
+    if (!match) throw new Error('No se encontraron resultados en YouTube.');
+    return `https://www.youtube.com/watch?v=${match[1]}`;
+}
+
 async function cmdYoutubeAudio(sock, jid, args) {
-    const url = args[0];
-    if (!url || !ytdl.validateURL(url)) {
-        await sock.sendMessage(jid, { text: '❌ Ingresa un link válido de YouTube.\nUso: *#play <link>*' });
+    let url = args.join(' ');
+    if (!url) {
+        await sock.sendMessage(jid, { text: '❌ Uso: *#play <link o nombre de canción>*\nEjemplo: #play auronplay' });
         return;
+    }
+    if (!ytdl.validateURL(url)) {
+        await sock.sendMessage(jid, { text: `🔍 Buscando: *${url}*...` });
+        try {
+            url = await buscarPrimerVideoYT(url);
+        } catch (err) {
+            await sock.sendMessage(jid, { text: `❌ No encontré resultados para: *${args.join(' ')}*` });
+            return;
+        }
     }
     await sock.sendMessage(jid, { text: '⏳ Descargando audio de YouTube...' });
     const tmpInput = path.join(os.tmpdir(), `yta_in_${Date.now()}.webm`);

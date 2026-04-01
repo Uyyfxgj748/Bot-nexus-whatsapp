@@ -1,94 +1,95 @@
 async function enviarMenu(sock, jid) {
-    const menu = `╔══════════════════════╗
-║   ⚡ NEXUS BOT 😈 ⚡   ║
-╚══════════════════════╝
+    const menu = `╭━━━〔 ⚡ NEXUS BOT 😈 〕━━━╮
+┃  Sistema activo • Online 24/7
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-🎰 *ECONOMÍA*
-┣ #balance | #bal | #coins — Ver tus coins
-┣ #daily | #diario — Recompensa diaria
-┣ #work | #w — Trabajar (c/2h)
-┣ #crime — Cometer un crimen (c/30m)
-┣ #slut — Ganar coins fácil (c/45m)
-┣ #coinflip #flip #cf [cant] [cara/cruz]
-┣ #ruleta [rojo|negro] [cant]
-┣ #robar #rob @user — Robar coins
-┣ #pay #transferir @user [cant]
-┣ #dep [cant|all] — Depositar al banco
-┣ #retirar [cant|all] — Retirar del banco
-┣ #baltop — Top de coins
-┣ #tienda — Ver tienda
-┣ #comprar <id> — Comprar artículo
-┗ #inventario — Tu inventario
+╭─ 🎰 ECONOMÍA
+│  ◦ #balance | #bal | #coins
+│  ◦ #daily | #diario
+│  ◦ #work | #w
+│  ◦ #crime | #slut
+│  ◦ #coinflip #cf [cant] [cara/cruz]
+│  ◦ #ruleta [rojo|negro] [cant]
+│  ◦ #robar @user | #pay @user [cant]
+│  ◦ #dep [cant|all] | #retirar [cant|all]
+│  ◦ #baltop
+│  ◦ #tienda | #comprar <id>
+│  ◦ #inventario
+╰───────────────
 
-👤 *PERFILES*
-┣ #perfil [@user] — Ver perfil
-┣ #level [@user] — Ver nivel y XP
-┣ #leaderboard | #top — Top XP
-┣ #setbirth DD/MM/AAAA — Cumpleaños
-┣ #setdesc [descripción]
-┣ #setgenre hombre|mujer
-┣ #marry @user — Casarse
-┣ #divorce — Divorciarse
-┗ #cumpleanos — Cumpleaños del mes
+╭─ 👤 PERFILES
+│  ◦ #perfil [@user]
+│  ◦ #level [@user]
+│  ◦ #leaderboard | #top
+│  ◦ #setbirth DD/MM/AAAA
+│  ◦ #setdesc [texto]
+│  ◦ #setgenre hombre|mujer
+│  ◦ #marry @user | #divorce
+│  ◦ #cumpleanos
+╰───────────────
 
-🎮 *ANIME (reacciones)*
-┣ #hug #kiss #pat #slap #dance
-┣ #cry #bite #blush #cuddle #poke
-┣ #punch #laugh #run #sad #angry
-┣ #wave #bored #facepalm #happy
-┣ #think #sleep #wink #lick
-┗ #tickle #eat #kill #wink
+╭─ 🎮 ANIME (Reacciones)
+│  ◦ #hug #kiss #pat #slap #dance
+│  ◦ #cry #bite #blush #cuddle
+│  ◦ #poke #punch #laugh #run
+│  ◦ #sad #angry #wave #bored
+│  ◦ #facepalm #happy #think
+│  ◦ #sleep #wink #lick #tickle
+│  ◦ #eat #kill
+╰───────────────
 
-🔞 *NSFW (imágenes)*
-┣ #neko #waifu #hentai #loli
-┣ #ass #pussy #boobs #cum
-┗ #blowjob #anal #yuri
+╭─ 🔞 NSFW (Imágenes)
+│  ◦ #neko #waifu #hentai
+│  ◦ #ass #boobs #pussy
+│  ◦ #yuri #cum
+╰───────────────
 
-🔞 *NSFW (acciones)*
-┣ #fuck #spank #handjob #fap
-┣ #cum #yuri #sixnine #undress
-┣ #grope #suckboobs #lickass
-┣ #footjob #boobjob #cumshot
-┗ #lickpussy #lickdick #cummouth
+╭─ 🔞 NSFW (Acciones)
+│  ◦ #fuck #spank #fap
+│  ◦ #yuri #sixnine #undress
+│  ◦ #grope #footjob #boobjob
+│  ◦ #cumshot #cummouth
+╰───────────────
 
-📥 *DESCARGAS*
-┣ #yt <link> — Video YouTube (máx 5min)
-┣ #play <link> — Audio YouTube
-┣ #search <búsqueda> — Buscar en YouTube
-┣ #tiktok <link> — Video TikTok
-┣ #ig <link> — Reel de Instagram
-┣ #twitter <link> — Video Twitter/X
-┣ #pinterest <búsqueda> — Imágenes
-┗ #img <link> — Descargar imagen
+╭─ 📥 DESCARGAS
+│  ◦ #yt <link>
+│  ◦ #play <link o nombre>
+│  ◦ #search <búsqueda>
+│  ◦ #tiktok <link>
+│  ◦ #ig <link>
+│  ◦ #twitter <link>
+│  ◦ #pinterest <búsqueda>
+│  ◦ #img <link>
+╰───────────────
 
-🛠️ *UTILIDADES*
-┣ #ping — Latencia del bot
-┣ #status — Estado del bot
-┣ #del — Eliminar mensaje (citar)
-┣ #pfp [@user] — Foto de perfil
-┣ #tag [msg] — Mencionar a todos
-┣ #sticker — Imagen/video a sticker
-┗ #toimage — Sticker a imagen
+╭─ 🛠️ UTILIDADES
+│  ◦ #ping | #status
+│  ◦ #del (citar msg)
+│  ◦ #pfp [@user]
+│  ◦ #tag [mensaje]
+│  ◦ #sticker | #toimage
+│  ◦ #stickersearch <búsqueda>
+╰───────────────
 
-👑 *ADMIN (solo admins)*
-┣ #kick @user — Expulsar
-┣ #promote @user — Hacer admin
-┣ #demote @user — Quitar admin
-┣ #warn @user [razón] — Advertir
-┣ #delwarn @user — Quitar advertencia
-┣ #warns @user — Ver advertencias
-┣ #setwarnlimit <n> — Límite warns
-┣ #antilink enable|disable
-┣ #welcome enable|disable
-┣ #goodbye enable|disable
-┣ #setwelcome [texto]
-┣ #setgoodbye [texto]
-┣ #onlyadmin enable|disable
-┣ #open — Abrir grupo
-┣ #close — Cerrar grupo
-┗ #topmensajes — Top activos
+╭─ 👑 ADMIN
+│  ◦ #kick @user
+│  ◦ #promote | #demote
+│  ◦ #warn @user [razón]
+│  ◦ #delwarn | #warns
+│  ◦ #setwarnlimit <n>
+│  ◦ #antilink on/off
+│  ◦ #welcome on/off
+│  ◦ #goodbye on/off
+│  ◦ #setwelcome [texto]
+│  ◦ #setgoodbye [texto]
+│  ◦ #onlyadmin on/off
+│  ◦ #open | #close
+│  ◦ #topmensajes
+╰───────────────
 
-_⚡ Nexus Bot — Siempre activo para ti 😈_`;
+╭━━━〔 ⚡ NEXUS BOT 〕━━━╮
+┃  Siempre activo para ti 😈
+╰━━━━━━━━━━━━━━━━━━━━━━╯`;
 
     await sock.sendMessage(jid, { text: menu });
 }

@@ -1,7 +1,7 @@
 const { enviarMenu } = require('./menu');
 const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
 const { cmdInteraccion, cmdNsfw, cmdNsfwAccion, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
-const { cmdSticker } = require('./sticker');
+const { cmdSticker, cmdStickerSearch } = require('./sticker');
 const { cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, cmdTwitter, cmdInstagram, cmdPinterest, cmdImagen } = require('./downloads');
 const { cmdPing, cmdStatus, cmdEliminar, cmdFotoPerfil, cmdTagAll, cmdStickerAImagen } = require('./utils');
 const { cmdPerfil, cmdSetbirth, cmdSetdesc, cmdSetgenre, cmdMarry, cmdDivorce, cmdLevel, cmdLeaderboard, cmdCumpleanos } = require('./profile');
@@ -111,6 +111,8 @@ async function manejarMensaje(sock, msg, groupMetadata) {
 
             case 'sticker': case 's': case 'stickers':
                 await cmdSticker(sock, jid, msg); break;
+            case 'stickersearch': case 'sticker_search': case 'stickerbus':
+                await cmdStickerSearch(sock, jid, args); break;
 
             case 'yt': case 'mp4': case 'ytmp4':
                 await cmdYoutube(sock, jid, args); break;
