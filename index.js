@@ -1,8 +1,11 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const readline = require('readline');
+const path = require('path');
+
 const { manejarMensaje } = require('./src/handler');
 const { getGrupo } = require('./src/database');
+const { manejarMensajePersonajes } = require('./src/personajes');
 
 function preguntarNumero() {
     return new Promise((resolve) => {
@@ -62,28 +65,21 @@ async function iniciarBot() {
         const g = getGrupo(id);
         if (action === 'add' && g.bienvenida) {
             for (const participante of participants) {
-                const mensaje = g.mensajeBienvenida
-                    .replace('@usuario', `@${participante.split('@')[0]}`);
-                await sock.sendMessage(id, {
-                    text: mensaje,
-                    mentions: [participante]
-                });
+                const mensaje = g.mensajeBienvenida.replace('@usuario', `@${participante.split('@')[0]}`);
+                await sock.sendMessage(id, { text: mensaje, mentions: [participante] });
             }
         }
         if (action === 'remove' && g.despedida) {
             for (const participante of participants) {
-                const mensaje = g.mensajeDespedida
-                    .replace('@usuario', `@${participante.split('@')[0]}`);
-                await sock.sendMessage(id, {
-                    text: mensaje,
-                    mentions: [participante]
-                });
+                const mensaje = g.mensajeDespedida.replace('@usuario', `@${participante.split('@')[0]}`);
+                await sock.sendMessage(id, { text: mensaje, mentions: [participante] });
             }
         }
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
+
         for (const msg of messages) {
             let groupMetadata = null;
             if (msg.key.remoteJid.endsWith('@g.us')) {
@@ -91,7 +87,17 @@ async function iniciarBot() {
                     groupMetadata = await sock.groupMetadata(msg.key.remoteJid);
                 } catch {}
             }
-            await manejarMensaje(sock, msg, groupMetadata);
+
+            const texto = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
+            const comando = texto.startsWith('#') ? texto.slice(1).split(' ')[0].toLowerCase() : '';
+
+            const comandosPersonajes = ['roll','rw','buycharacter','harem','buychar','buyc'];
+
+            if (comandosPersonajes.includes(comando)) {
+                await manejarMensajePersonajes(sock, msg);
+            } else {
+                await manejarMensaje(sock, msg, groupMetadata);
+            }
         }
     });
 }
