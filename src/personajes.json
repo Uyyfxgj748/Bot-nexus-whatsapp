@@ -1,0 +1,39 @@
+{
+  "personajes": [
+    {
+      "nombre": "Riku",
+      "genero": "Masculino",
+      "serie": "AnimeX",
+      "valor": 5000,
+      "imagen": "https://i.imgur.com/abcdef1.png"
+    },
+    {
+      "nombre": "Mita",
+      "genero": "Femenino",
+      "serie": "Miside",
+      "valor": 4000,
+      "imagen":"https://i.imgur.com/Es6Yk5n.jpeg"
+    },
+    {
+      "nombre": "Luna",
+      "genero": "Femenino",
+      "serie": "MoonWorld",
+      "valor": 4500,
+      "imagen": "https://i.imgur.com/abcdef3.png"
+    },
+    {
+      "nombre": "Kai",
+      "genero": "Masculino",
+      "serie": "SeaLegends",
+      "valor": 4800,
+      "imagen": "https://i.imgur.com/abcdef4.png"
+    },
+    {
+      "nombre": "Aiko",
+      "genero": "Femenino",
+      "serie": "StarRiders",
+      "valor": 5200,
+      "imagen": "https://i.imgur.com/abcdef5.png"
+    }
+  ]
+}
