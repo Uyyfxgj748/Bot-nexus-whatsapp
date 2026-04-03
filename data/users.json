@@ -12,10 +12,10 @@
       }
     ],
     "nivel": 4,
-    "experiencia": 215,
+    "experiencia": 360,
     "banco": 9600,
     "ultimoTrabajo": 1775024256805,
-    "mensajes": 163,
+    "mensajes": 192,
     "pareja": null,
     "cumpleanos": null,
     "genero": null,
@@ -38,8 +38,8 @@
     "ultimoTrabajo": 1775028171581,
     "inventario": [],
     "nivel": 1,
-    "experiencia": 20,
-    "mensajes": 4,
+    "experiencia": 25,
+    "mensajes": 5,
     "pareja": null,
     "cumpleanos": null,
     "genero": null,
@@ -84,7 +84,7 @@
       "Riku"
     ],
     "cooldowns": {
-      "rw": 1775116114110,
+      "rw": 1775184180314,
       "buy": 1775116129917
     }
   }

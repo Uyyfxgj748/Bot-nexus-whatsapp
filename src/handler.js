@@ -1,12 +1,12 @@
+// handler.js
 
 const OWNER = '124602017677540@lid'
 
 const fs = require('fs');
+const axios = require('axios'); // Para requests HTTP
 
 const rutaEstado = './data/estado.json';
-
 let botActivo;
-
 
 // Cargar o crear estado
 if (fs.existsSync(rutaEstado)) {
@@ -22,30 +22,149 @@ function guardarEstado() {
     fs.writeFileSync(rutaEstado, JSON.stringify({ activo: botActivo }, null, 2));
 }
 
+// Módulos externos
 const { enviarMenu } = require('./menu');
 
-const { cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, cmdBaltop, cmdTienda, cmdComprar, cmdInventario } = require('./economy');
+const { 
+    cmdSaldo, cmdDiario, cmdWork, cmdCrime, cmdSlut, cmdCoinflip, 
+    cmdDeposit, cmdWithdraw, cmdRoulette, cmdSteal, cmdTransferir, 
+    cmdBaltop, cmdTienda, cmdComprar, cmdInventario 
+} = require('./economy');
 
-const { cmdInteraccion, cmdNsfw, cmdNsfwAccion,cmdWaifu, TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION } = require('./interactions');
+const { 
+    cmdInteraccion, cmdNsfw, cmdNsfwAccion, cmdWaifu, 
+    TODO_SFW, TODO_NSFW_IMG, TODO_NSFW_ACCION 
+} = require('./interactions');
 
 const { cmdSticker, cmdStickerSearch } = require('./sticker');
 
-const { cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, cmdTwitter, cmdInstagram, cmdPinterest, cmdImagen } = require('./downloads');
+const { 
+    cmdYoutube, cmdYoutubeAudio, cmdYoutubeSearch, cmdTiktok, 
+    cmdTwitter, cmdInstagram, cmdImagen 
+} = require('./downloads');
 
-const { cmdPing, cmdStatus, cmdEliminar, cmdFotoPerfil, cmdTagAll, cmdStickerAImagen } = require('./utils');
+const { 
+    cmdPing, cmdStatus, cmdEliminar, cmdFotoPerfil, cmdTagAll, 
+    cmdStickerAImagen 
+} = require('./utils');
 
-const { cmdPerfil, cmdSetbirth, cmdSetdesc, cmdSetgenre, cmdMarry, cmdDivorce, cmdLevel, cmdLeaderboard, cmdCumpleanos } = require('./profile');
+const { 
+    cmdPerfil, cmdSetbirth, cmdSetdesc, cmdSetgenre, cmdMarry, 
+    cmdDivorce, cmdLevel, cmdLeaderboard, cmdCumpleanos 
+} = require('./profile');
 
-const { esAdmin, verificarAntilink, cmdKick, cmdPromote, cmdDemote, cmdAntilink, cmdClose, cmdSetwelcome, cmdSetgoodbye, cmdWelcome, cmdGoodbye, cmdOnlyadmin, cmdOpen, cmdWarn, cmdDelwarn, cmdWarns, cmdSetwarnlimit, cmdTopmensajes } = require('./admin');
+const { 
+    esAdmin, verificarAntilink, cmdKick, cmdPromote, cmdDemote, 
+    cmdAntilink, cmdClose, cmdSetwelcome, cmdSetgoodbye, cmdWelcome, 
+    cmdGoodbye, cmdOnlyadmin, cmdOpen, cmdWarn, cmdDelwarn, cmdWarns, 
+    cmdSetwarnlimit, cmdTopmensajes 
+} = require('./admin');
 
 const { getUsuario, getGrupo, agregarExp } = require('./database');
 
+// =======================
+//  FUNCIONES DE BÚSQUEDA
+// =======================
+
+// Unsplash
+async function buscarUnsplash(query, maxImages = 3) {
+    const ACCESS_KEY = process.env.UNSPLASH_KEY;
+    try {
+        const response = await axios.get('https://api.unsplash.com/search/photos', {
+            params: { query: query, per_page: maxImages },
+            headers: { Authorization: `Client-ID ${ACCESS_KEY}` }
+        });
+
+        return response.data.results.map(img => ({
+            url: img.urls.regular,
+            desc: img.alt_description || 'Imagen relacionada'
+        }));
+    } catch (err) {
+        console.error('Error Unsplash:', err);
+        return [];
+    }
+}
+
+// Bing + Pinterest
+async function buscarPinterest(query, maxImages = 3) {
+    try {
+        const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query + " site:pinterest.com")}`;
+        const { data } = await axios.get(url);
+
+        const regex = /murl&quot;:&quot;(.*?)&quot;/g;
+        const matches = [...data.matchAll(regex)];
+
+        return matches.slice(0, maxImages).map(m => m[1]);
+    } catch (err) {
+        console.error('Error Bing Pinterest:', err);
+        return [];
+    }
+}
+
+// =======================
+//  COMANDO #PIN FLEXIBLE CON RESPUESTA
+// =======================
+
+// Map para guardar query asociada a cada mensaje
+const pinMap = new Map();
+
+async function manejarPin(sock, msg, isReply = false) {
+    const from = msg.key.remoteJid;
+    let query;
+
+    if (isReply) {
+        // Si es respuesta a la imagen, obtener query guardada
+        const repliedMsgId = msg.message.extendedTextMessage?.contextInfo?.stanzaId;
+        if (!repliedMsgId || !pinMap.has(repliedMsgId)) return;
+        query = pinMap.get(repliedMsgId);
+    } else {
+        const text = msg.message?.conversation || '';
+        const args = text.slice(5).trim().split(' ').filter(Boolean);
+        query = args.length > 0 ? args.join(' ') : text.slice(5);
+        if (!query) return;
+    }
+
+    // Buscar imágenes
+    let imagenes = await buscarPinterest(query, 3);
+    let captions = [];
+
+    if (imagenes.length === 0) {
+        const results = await buscarUnsplash(query, 3);
+        if (results.length > 0) {
+            imagenes = results.map(r => r.url);
+            captions = results.map(r => r.desc);
+        }
+    }
+
+    if (imagenes.length === 0) {
+        await sock.sendMessage(from, { text: 'No encontré imágenes 😓' });
+        return;
+    }
+
+    // Elegir imagen aleatoria
+    const idx = Math.floor(Math.random() * imagenes.length);
+    const url = imagenes[idx];
+    const caption = captions[idx] || `✨ Resultado para: ${query}\n📌 Una imagen que te puede gustar`;
+
+    // Enviar la imagen
+    const sentMsg = await sock.sendMessage(from, {
+        image: { url },
+        caption,
+        footer: 'Pinterest Style Bot\nResponde con 🔄 o #again para otra imagen'
+    });
+
+    // Guardar query para responder con 🔄 o #again
+    pinMap.set(sentMsg.key.id, query);
+}
+
+// =======================
+//  HANDLER PRINCIPAL
+// =======================
 async function manejarMensaje(sock, msg, groupMetadata) {
     if (!msg.message || msg.key.fromMe) return;
-    
+
     const jid = msg.key.remoteJid;
     const senderJid = msg.key.participant || msg.key.remoteJid;
-    
     const esGrupo = jid.endsWith('@g.us');
 
     const texto = (
@@ -56,37 +175,31 @@ async function manejarMensaje(sock, msg, groupMetadata) {
         ''
     ).trim();
 
-             //COMANDOS OFF ON
-    
     // 🔴 OFF
-if (texto.toLowerCase() === '#off') {
-
-    if (senderJid !== OWNER) {
-        await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
+    if (texto.toLowerCase() === '#off') {
+        if (senderJid !== OWNER) {
+            await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
+            return;
+        }
+        botActivo = false;
+        guardarEstado();
+        await sock.sendMessage(jid, { text: '😴 Bot desactivado' });
         return;
     }
 
-    botActivo = false;
-    guardarEstado();
-    await sock.sendMessage(jid, { text: '😴 Bot desactivado' });
-    return;
-}
-
-// 🟢 ON
-if (texto.toLowerCase() === '#on') {
-
-    if (senderJid !== OWNER) {
-        await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
+    // 🟢 ON
+    if (texto.toLowerCase() === '#on') {
+        if (senderJid !== OWNER) {
+            await sock.sendMessage(jid, { text: '⛔ No tienes permiso para usar este comando' });
+            return;
+        }
+        botActivo = true;
+        guardarEstado();
+        await sock.sendMessage(jid, { text: '⚡ Bot activado' });
         return;
     }
 
-    botActivo = true;
-    guardarEstado();
-    await sock.sendMessage(jid, { text: '⚡ Bot activado' });
-    return;
-}
-
-    // 🔒 BLOQUEO GLOBAL AMIGABLE
+    // 🔒 Bloqueo global
     if (!botActivo) {
         if (texto.startsWith('#')) {
             await sock.sendMessage(jid, { text: '⚠️ El bot está apagado. Usa #on para activarlo.' });
@@ -94,18 +207,18 @@ if (texto.toLowerCase() === '#on') {
         return;
     }
 
-    // EXP EN GRUPOS
+    // EXP en grupos
     if (esGrupo && texto) agregarExp(senderJid, 5);
 
-    // VERIFICAR ANTILINK
+    // Verificar antilink
     if (esGrupo && texto && !texto.startsWith('#')) {
         await verificarAntilink(sock, jid, msg, groupMetadata, senderJid);
     }
 
-    // SOLO COMANDOS
-    if (!texto.startsWith('#')) return;
+    // Solo comandos
+    if (!texto.startsWith('#') && !texto.startsWith('🔄')) return;
 
-    const [cmd, ...args] = texto.slice(1).toLowerCase().split(' ');
+    const [cmd, ...args] = texto.startsWith('#') ? texto.slice(1).toLowerCase().split(' ') : [texto.toLowerCase()];
     const mencionados = msg.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
     const g = esGrupo ? getGrupo(jid) : null;
 
@@ -114,6 +227,13 @@ if (texto.toLowerCase() === '#on') {
     getUsuario(senderJid);
 
     try {
+        // RESPONDER A #PIN 🔄 O #again
+        if ((texto === '🔄' || texto.toLowerCase().startsWith('#again')) &&
+            msg.message.extendedTextMessage?.contextInfo?.quotedMessage) {
+            await manejarPin(sock, msg, true);
+            return;
+        }
+
         switch (cmd) {
             // MENÚ Y UTILIDADES
             case 'menu': case 'ayuda': case 'help': case 'commands': case 'comandos':
@@ -202,8 +322,11 @@ if (texto.toLowerCase() === '#on') {
                 await cmdTwitter(sock, jid, args); break;
             case 'instagram': case 'ig': case 'reel':
                 await cmdInstagram(sock, jid, args); break;
-            case 'pinterest': case 'pin':
-                await cmdPinterest(sock, jid, args); break;
+
+            // COMANDO PRO #PIN
+            case 'pin': case 'pinterest':
+                await manejarPin(sock, msg); break;
+
             case 'img':
                 await cmdImagen(sock, jid, args); break;
 
@@ -241,11 +364,10 @@ if (texto.toLowerCase() === '#on') {
             case 'topmensajes': case 'topcount': case 'topmessages': case 'topmsgcount':
                 await cmdTopmensajes(sock, jid); break;
 
-case 'waifu':
-    await cmdWaifu(sock, jid, args);
-    break;             
+            // WAIFU / INTERACCIONES
+            case 'waifu':
+                await cmdWaifu(sock, jid, args); break;
 
-            // INTERACCIONES SFW / NSFW
             default:
                 if (TODO_SFW.includes(cmd)) {
                     await cmdInteraccion(sock, jid, senderJid, cmd, mencionados);

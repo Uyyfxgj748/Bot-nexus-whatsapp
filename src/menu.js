@@ -56,9 +56,9 @@ async function enviarMenu(sock, jid) {
 │  ◦ #play <link o nombre>
 │  ◦ #search <búsqueda>
 │  ◦ #tiktok <link>
-│  ◦ #ig <link>
-│  ◦ #twitter <link>
-│  ◦ #pinterest <búsqueda>
+│  ◦ #ig | #reel <link>
+│  ◦ #twitter | #x <link>
+│  ◦ #pinterest | #pin <búsqueda>
 │  ◦ #img <link>
 ╰───────────────
 
